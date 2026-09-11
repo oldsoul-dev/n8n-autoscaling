@@ -19,6 +19,23 @@ RUN apk add --no-cache \
     graphicsmagick \
     imagemagick
 
+# Stage 1b: Build a Corepack install to copy into the final image.
+# n8nio/runners removed apk (see top-of-file note), and Node 25+ no longer
+# bundles Corepack by default — so the final stage has neither a package
+# manager nor Corepack to install one with. Build it here, where npm exists,
+# and COPY the result in below, the same way chromium/ffmpeg/etc. are copied
+# from the `builder` stage.
+#
+# Pinned to 0.35.0 deliberately, not "latest": that's the exact version that
+# used to ship bundled with n8nio/runners:2.36.8 (confirmed by inspecting that
+# image directly). corepack@latest resolved to 0.36.0 during testing and
+# reintroduced ERR_PNPM_UNEXPECTED_STORE -- the very bug the pnpm@10 pin below
+# exists to avoid -- so a newer Corepack is not a safe drop-in here. Bump this
+# pin deliberately (and re-test the `pnpm add` step below) if it ever needs to
+# move.
+FROM node:22-alpine AS corepack-builder
+RUN npm install -g corepack@0.35.0
+
 # Stage 2: Copy to the task-runner release matching the n8n server
 FROM n8nio/runners:${N8N_VERSION}
 
@@ -46,11 +63,29 @@ RUN ln -sf /usr/lib/chromium/chromium /usr/bin/chromium
 
 # Install npm packages in the task runner's node_modules directory
 WORKDIR /opt/runners/task-runner-javascript
-# Pin pnpm to v10 before installing. The base image's node_modules is linked
-# against a pnpm v10 store, but corepack now defaults to pnpm v11 (store v11),
-# so `corepack pnpm add` fails with ERR_PNPM_UNEXPECTED_STORE. Activating pnpm@10
-# keeps the store version matched. See issue #26.
-RUN /usr/local/bin/node /usr/local/lib/node_modules/corepack/dist/corepack.js prepare pnpm@10 --activate
+# Pin pnpm to match whatever this base image's node_modules was already
+# linked with, or `corepack pnpm add` fails with ERR_PNPM_UNEXPECTED_STORE
+# (see issue #26). This pin is NOT stable across n8n versions -- upstream's
+# own n8nio/runners image has changed its bundled pnpm major version at
+# least once already (v10 as of 2.36.8, v11 as of 2.38.6), and there's no
+# packageManager field in the runner's package.json to auto-detect it from.
+#
+# On every version bump, re-check what's actually linked before assuming
+# this pin still matches:
+#   docker run --rm -u root --entrypoint sh n8nio/runners:<version> -c \
+#     "cat /opt/runners/task-runner-javascript/node_modules/.modules.yaml" \
+#     | grep packageManager
+# Confirmed via the command above against n8nio/runners:2.38.6 -- linked
+# with pnpm@11.22.0 (was pnpm@10.x for 2.36.8).
+#
+# Corepack is no longer bundled with the Node base image as of Node 25+, and
+# this stage has no npm/apk to install it with directly (see corepack-builder
+# stage above). Copy the Corepack package built there into the exact path
+# the two RUN lines below already expect, so those upstream commands work
+# unmodified.
+COPY --from=corepack-builder /usr/local/lib/node_modules/corepack /usr/local/lib/node_modules/corepack
+COPY --from=corepack-builder /usr/local/bin/corepack /usr/local/bin/corepack
+RUN /usr/local/bin/node /usr/local/lib/node_modules/corepack/dist/corepack.js prepare pnpm@11.22.0 --activate
 RUN /usr/local/bin/node /usr/local/lib/node_modules/corepack/dist/corepack.js pnpm add \
     ajv \
     ajv-formats \
