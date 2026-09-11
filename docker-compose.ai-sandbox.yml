@@ -122,7 +122,11 @@ services:
       - sandbox-network
 
   searxng:
-    image: ghcr.io/searxng/searxng:${SEARXNG_VERSION:-2026.8.28-a30b2d474}
+    build:
+      context: .
+      dockerfile: Dockerfile.searxng
+      args:
+        SEARXNG_VERSION: ${SEARXNG_VERSION:-2026.8.28-a30b2d474}
     restart: unless-stopped
     logging:
       driver: ${LOG_DRIVER:-json-file}

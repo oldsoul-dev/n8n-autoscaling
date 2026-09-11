@@ -1,6 +1,30 @@
-use_default_settings: true
+use_default_settings:
+  engines:
+    keep_only:
+      - duckduckgo
+      - brave
+      - mojeek
+      - startpage
+      - wikipedia
+      - github
+      - stackexchange
+      - wikidata
+
+server:
+  method: "POST"
+  image_proxy: true
+  public_instance: false
 
 search:
   formats:
     - html
     - json
+  autocomplete: ""
+  safe_search: 1
+
+enabled_plugins:
+  - "Tracker URL remover"
+
+plugins:
+  searxng_bm25_reranker.SXNGPlugin:
+    active: true
