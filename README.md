@@ -1,3 +1,38 @@
+> **This is a maintained fork**, deployed at `n8n.myhomelab.space` on a dedicated VM (VM106, Proxmox). It tracks [conor-is-my-name/n8n-autoscaling](https://github.com/conor-is-my-name/n8n-autoscaling) as the `upstream` git remote on the `homelab-main` branch. Everything below this section is the original upstream README, kept intact; everything in this section is specific to this fork.
+>
+> For the exhaustive, dated log of individual decisions and failures encountered getting this running, see [`FORK_CHANGES.md`](./FORK_CHANGES.md) — this section is the summary.
+>
+> ## Fork history
+>
+> **Initial deployment.** Reviewed the upstream setup script, compose files, and Postgres init script directly before running anything — no supply-chain issues found, but surfaced two things worth knowing: `N8N_RUNNERS_INSECURE_MODE` / `N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION` ship `true` by default, and the autoscaler mounts `/var/run/docker.sock` raw. Both flags were turned off; the socket mount was left as-is (VM106 isn't internet-facing, and the autoscaler is a trusted component by design).
+>
+> **Sandbox isolation.** Instance AI's self-hosted sandbox falls back to a `--privileged` container without Sysbox — host-root-equivalent, upstream itself calls it unsuitable for anything internet-facing. Installed `sysbox-runc` manually (the vendor's installer refuses Debian 13; the `.deb` itself isn't version-locked, so it was verified by checksum and installed directly). Instance AI runs in production isolation, backed by a local Ollama model over its OpenAI-compatible endpoint — no external API key required.
+>
+> **Infrastructure fixes along the way.** VM106's root filesystem was stuck at 2.8GB despite a 32GB disk allocation (grown via `growpart`/`resize2fs`). An encryption-key mismatch surfaced later — traced to a container that was never restarted after `.env` changed, not a bug in n8n itself — fixed by clearing the stale settings file so it regenerated from the correct key.
+>
+> **Migrated from a prior LXC-hosted instance.** 5 workflows and 14 credentials moved over via n8n's own `export`/`import` CLI (not a raw `pg_dump`, to stay version-safe across the schema gap) — the encryption key was piped host-to-host so it never touched a terminal or a file that got read into a conversation.
+>
+> **Version bump to 2.38.6, with the Corepack fix upstream doesn't have.** Bumping past 2.36.8 broke `Dockerfile.runner`'s build — Node 25+ dropped bundled Corepack, and the runner's final-stage base image has neither `apk` nor `npm` to install a replacement (`apk` was removed upstream in `runners` v2.1.0+). Fixed by building Corepack in a throwaway stage and `COPY`-ing it in, the same pattern already used here for chromium/ffmpeg/imagemagick. That alone wasn't enough: the existing `pnpm@10` pin (itself an earlier upstream fix, see their `v2.1.1` tag) started failing too, because `n8nio/runners:2.38.6` itself now ships `node_modules` linked against `pnpm@11.22.0` — pinning v10 against a v11-linked base reintroduces the exact `ERR_PNPM_UNEXPECTED_STORE` error the pin was meant to prevent. Re-pinned to match. **This is not a permanent pin** — see the maintenance process below.
+>
+> ## Maintaining this fork
+>
+> Every upstream release gets reviewed, never auto-merged. Process, in full in `FORK_CHANGES.md`:
+>
+> 1. `git fetch upstream` and skim `git log homelab-main..upstream/main --oneline`
+> 2. Check specifically whether upstream touched `Dockerfile.runner`'s Corepack/pnpm step, or the runner security flags — if so, this fork's patches may be redundant or need re-verification
+> 3. Before any future n8n version bump, re-check what pnpm version the new `n8nio/runners` base actually ships with — it has changed at least once already:
+>    ```
+>    docker run --rm -u root --entrypoint sh n8nio/runners:<version> -c \
+>      "cat /opt/runners/task-runner-javascript/node_modules/.modules.yaml" \
+>      | grep packageManager
+>    ```
+> 4. Build in isolation (`docker compose build`, no `up`) before touching anything running
+> 5. Snapshot first: tag the current working images, copy `.env` aside, `pg_dump` the live database — a bad migration needs the database itself restorable, not just the old code pointed back at it
+> 6. Cut over, verify every container reaches healthy, verify workflows/credentials still decrypt, verify Instance AI still responds
+> 7. Commit and tag the verified state
+>
+> ---
+
 # n8n Autoscaling System (n8n 2.0 + Instance AI Ready)
 
 A Docker-based autoscaling solution for n8n workflow automation platform. Dynamically scales worker containers based on Redis queue length. No need to deal with k8s or any other container scaling provider - a simple script runs it all and is easily configurable.
