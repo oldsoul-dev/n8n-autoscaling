@@ -77,8 +77,8 @@ x-n8n: &service-n8n
     - N8N_RUNNERS_MODE=external
     - N8N_RUNNERS_BROKER_LISTEN_ADDRESS=0.0.0.0
     - N8N_RUNNERS_AUTH_TOKEN=${N8N_RUNNERS_AUTH_TOKEN}
-    - N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION=true
-    - N8N_RUNNERS_INSECURE_MODE=true
+    - N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION=false
+    - N8N_RUNNERS_INSECURE_MODE=false
 
 # Task runner base configuration for n8n 2.0
 x-task-runner: &service-task-runner
@@ -99,8 +99,8 @@ x-task-runner: &service-task-runner
     - NODE_FUNCTION_ALLOW_EXTERNAL=${NODE_FUNCTION_ALLOW_EXTERNAL:-}
     - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
     - PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
-    - N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION=true
-    - N8N_RUNNERS_INSECURE_MODE=true
+    - N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION=false
+    - N8N_RUNNERS_INSECURE_MODE=false
 
 services:
   cloudflared:
@@ -163,7 +163,8 @@ services:
   n8n:
     <<: *service-n8n
     ports:
-      - "${TAILSCALE_IP:-127.0.0.1}:5678:5678"
+      - "127.0.0.1:5678:5678"
+      - "192.168.2.210:5678:5678"
     volumes:
       - n8n_main:/n8n
     depends_on:
@@ -240,8 +241,8 @@ services:
       - NODE_FUNCTION_ALLOW_EXTERNAL=${NODE_FUNCTION_ALLOW_EXTERNAL:-}
       - PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
       - PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
-      - N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION=true
-      - N8N_RUNNERS_INSECURE_MODE=true
+      - N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION=false
+      - N8N_RUNNERS_INSECURE_MODE=false
     depends_on:
       n8n-worker:
         condition: service_started
