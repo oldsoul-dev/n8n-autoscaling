@@ -22,9 +22,8 @@ search:
   autocomplete: ""
   safe_search: 1
 
-enabled_plugins:
-  - "Tracker URL remover"
-
 plugins:
+  searx.plugins.tracker_url_remover.SXNGPlugin:
+    active: true
   searxng_bm25_reranker.SXNGPlugin:
     active: true

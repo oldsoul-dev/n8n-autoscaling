@@ -126,8 +126,10 @@ services:
       context: .
       dockerfile: Dockerfile.searxng
       args:
-        SEARXNG_VERSION: ${SEARXNG_VERSION:-2026.8.28-a30b2d474}
+        SEARXNG_VERSION: ${SEARXNG_VERSION:-2026.9.12-d4f00d15d}
     restart: unless-stopped
+    ports:
+      - "192.168.2.210:8080:8080"
     logging:
       driver: ${LOG_DRIVER:-json-file}
       options:
@@ -150,3 +152,4 @@ services:
         condition: service_healthy
     networks:
       - sandbox-network
+

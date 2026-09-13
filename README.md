@@ -225,9 +225,9 @@ On an existing n8n database, the saved AI Assistant and Sandbox on/off values ta
 
 On Linux production hosts, install Sysbox first and verify that `docker info --format '{{json .Runtimes}}'` lists `sysbox-runc`. The wizard detects it and automatically selects `docker-compose.ai-sandbox.sysbox.yml`. This is the [upstream production Linux topology](https://github.com/n8n-io/n8n-sandbox-service/blob/main/docs/quickstart-linux.md). The pinned sandbox images support amd64 and arm64; the wizard rejects unsupported host architectures. Docker Engine 24+, the Docker Compose v2 plugin, and a Linux kernel newer than 5.19 are required; review the upstream distro constraints before installing Sysbox.
 
-If Sysbox is absent, the wizard can use `docker-compose.ai-sandbox.privileged.yml` only after an explicit warning. A privileged Docker-in-Docker runner is host-root-equivalent and is intended for Docker Desktop or local/test use, not an internet-facing production server. The API, runner, and SearXNG remain on a dedicated bridge with no published ports in either mode.
+If Sysbox is absent, the wizard can use `docker-compose.ai-sandbox.privileged.yml` only after an explicit warning. A privileged Docker-in-Docker runner is host-root-equivalent and is intended for Docker Desktop or local/test use, not an internet-facing production server. The API and runner remain on a dedicated bridge with no published ports in either mode. **This fork diverges from upstream on SearXNG's exposure** — see `FORK_CHANGES.md` #4: SearXNG's port is published bound to the host's own LAN IP (not `0.0.0.0`), so it's reachable from the LAN/reverse proxy without a published-on-all-interfaces port. Upstream's default of no published SearXNG port at all is safer if you don't need LAN-level access to it directly.
 
-The validated image bundle pins the sandbox service to `1.1.1`, its transitional inner sandbox image to `1.1.0`, and SearXNG to rolling build `2026.8.28-a30b2d474`. These versions passed the n8n 2.36.8 create/execute/delete smoke test. Do not change them independently or use floating `latest`/`stable` tags: future unified sandbox releases must move the API, runner, and inner image together, and transport changes may require coordinated certificate paths and health checks.
+The validated image bundle pins the sandbox service to `1.1.1`, its transitional inner sandbox image to `1.1.0`, and SearXNG to `2026.9.12-d4f00d15d` (this fork rebuilds SearXNG on top of that tag via `Dockerfile.searxng` — see `FORK_CHANGES.md` #4/#5 for the privacy hardening and BM25 reranker layered in, and why the pin gets bumped periodically). These versions passed the n8n 2.36.8 create/execute/delete smoke test. Do not change them independently or use floating `latest`/`stable` tags: future unified sandbox releases must move the API, runner, and inner image together, and transport changes may require coordinated certificate paths and health checks.
 
 #### Manual provider selection
 
@@ -755,7 +755,7 @@ https://webhook.yourdomain.com/webhook/your-webhook-id
 ├── docker-compose.ai-sandbox.sysbox.yml      # Production Linux isolation
 ├── docker-compose.ai-sandbox.privileged.yml  # Local/test isolation fallback
 ├── docker-compose.podman.yml       # Podman rootless override (SELinux/UID flags)
-├── searxng-settings.yml            # Enables SearXNG JSON responses for Instance AI
+├── searxng-settings.yml            # SearXNG config: JSON responses for Instance AI, privacy hardening, BM25/tracker-url plugins (fork addition, see FORK_CHANGES.md)
 ├── Dockerfile                      # Main n8n image (based on n8nio/n8n)
 ├── Dockerfile.runner               # Task runner image (based on n8nio/runners)
 ├── n8n-task-runners.json           # Task runner launcher config

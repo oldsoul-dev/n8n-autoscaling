@@ -20,8 +20,33 @@ This is a maintained fork of [conor-is-my-name/n8n-autoscaling](https://github.c
 
 ### 3. Version pin
 **File:** `.env` (`N8N_VERSION`)
-**What:** Pinned to `2.38.6` (latest stable on npm at time of writing) rather than tracking upstream's default or `latest`.
+**What:** Pinned to `2.38.7` (latest stable on npm at time of writing) rather than tracking upstream's default or `latest`. Bumped from `2.38.6` on 2026-09-11.
 **Why:** Deliberate version control — upgrades happen as a reviewed decision, not an automatic pull.
+
+### 4. SearXNG service added, hardened for privacy, BM25 reranker layered in
+**Commit:** `harden searxng: curated engines, autocomplete/tracker-url privacy fixes, POST method, image proxy; layer in BM25 reranker via custom Dockerfile.searxng`
+**Files:** `Dockerfile.searxng` (new), `searxng-settings.yml`, `docker-compose.ai-sandbox.yml`
+**What:**
+- New `searxng` service in `docker-compose.ai-sandbox.yml`, built from a custom `Dockerfile.searxng` layered on `ghcr.io/searxng/searxng`, wired into `sandbox-network` and exposed to n8n's Instance AI feature via `N8N_INSTANCE_AI_SEARXNG_URL=http://searxng:8080`.
+- `Dockerfile.searxng` bootstraps `pip` into the base image's venv (Void Linux base ships without it), installs [searxng-bm25-reranker](https://github.com/Oaklight/searxng-bm25-reranker), then strips `pip`/`setuptools`/`wheel` back out to keep the image lean.
+- `searxng-settings.yml` rewritten for privacy: curated `keep_only` engine list (duckduckgo, brave, mojeek, startpage, wikipedia, github, stackexchange, wikidata), `method: POST` (keeps queries out of access logs / browser history-adjacent server logs), `image_proxy: true`, `public_instance: false`, `autocomplete: ""` (disables autocomplete-leak to third parties), `safe_search: 1` default.
+- Two plugins enabled under `plugins:`, both addressed by full module path (this SearXNG version requires the new-style key — the older top-level `enabled_plugins: [...]` list is silently ignored):
+  - `searx.plugins.tracker_url_remover.SXNGPlugin` (built-in — note the `searx.plugins.` prefix; external/pip-installed plugins like BM25 below do **not** take this prefix)
+  - `searxng_bm25_reranker.SXNGPlugin` (external, installed via the Dockerfile step above)
+- `searxng` container's port bound to the host's LAN IP only (`192.168.2.210:8080:8080`, not `0.0.0.0`) — reachable from the LAN/Traefik, not from outside the host's own interface.
+**Why:** n8n's Instance AI search feature needed a search backend; self-hosting via SearXNG avoids sending every AI-assisted search query to a third party. The privacy settings and BM25 reranker close the gap between "self-hosted" and "actually private/effective" — default SearXNG settings leak autocomplete queries to the configured autocomplete backend and don't rerank results for relevance.
+**Revisit if:** upstream SearXNG changes its plugin-loading schema again, or a future base image restores `pip` (the ensurepip-bootstrap-then-strip step becomes unnecessary).
+
+### 5. SearXNG version pin
+**File:** `.env` (`SEARXNG_VERSION`), `docker-compose.ai-sandbox.yml` (fallback default)
+**What:** Pinned to `2026.9.12-d4f00d15d`. Bumped from the original `2026.8.28-a30b2d474` on 2026-09-13 (SearXNG cuts new tags nearly daily; left unpinned this would drift constantly, left stale it falls behind on engine fixes — checked and bumped as a deliberate step instead).
+**Why:** Same reasoning as the n8n version pin (#3) — reviewed upgrades, not automatic tracking.
+
+### 6. Network exposure: SearXNG is internal-only, not on the Cloudflare Tunnel
+**Scope:** Outside this repo — Traefik dynamic config (`private.yml`) and DNS (Technitium), not tracked in this git history.
+**What:** `search.myhomelab.space` resolves and routes LAN/Traefik-internal only (`middlewares: ["internal"]`). It was briefly on the Cloudflare Tunnel alongside `n8n.` and torn back off.
+**Why:** An unauthenticated SearXNG instance has no reason to be reachable from the public internet; away-from-home access is intended to go through Tailscale instead (not yet configured as of this writing).
+**Revisit if:** away-from-home search access is needed before Tailscale is set up on this VM.
 
 ## Review process for future upstream releases
 
@@ -30,3 +55,4 @@ This is a maintained fork of [conor-is-my-name/n8n-autoscaling](https://github.c
 3. Check whether any upstream commit touches `Dockerfile.runner`'s Corepack step, or the runner security flags in `docker-compose.yml` — if so, divergence #1 or #2 above may need to be re-evaluated or dropped
 4. `git merge upstream/main` (or cherry-pick specific commits) into a throwaway branch, resolve conflicts, rebuild in isolation (`docker compose build`, no `up`) before cutting over
 5. Follow the same backup-before-cutover pattern as any version bump: tag current images, dump the DB, copy `.env`, then `up -d --build`
+6. For SearXNG specifically: check the [searxng-bm25-reranker](https://github.com/Oaklight/searxng-bm25-reranker) repo for compatibility before bumping `SEARXNG_VERSION` past a major schema change — the plugin-loading key format (`plugins:` with full module paths) has already changed once upstream.
