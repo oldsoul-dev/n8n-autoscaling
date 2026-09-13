@@ -48,6 +48,15 @@ This is a maintained fork of [conor-is-my-name/n8n-autoscaling](https://github.c
 **Why:** An unauthenticated SearXNG instance has no reason to be reachable from the public internet; away-from-home access is intended to go through Tailscale instead (not yet configured as of this writing).
 **Revisit if:** away-from-home search access is needed before Tailscale is set up on this VM.
 
+### 7. `worklaptop-minimal` branch: pared down for local dev
+**Branch:** `worklaptop-minimal` (this section describes that branch, not `homelab-main`)
+**Files removed:** `docker-compose.instance-ai.yml`, `docker-compose.ai-sandbox.yml`, `docker-compose.ai-sandbox.privileged.yml`, `docker-compose.ai-sandbox.sysbox.yml`, `docker-compose.ai-daytona.yml`, `docker-compose.cloudflare.yml`, `Dockerfile.searxng`, `searxng-settings.yml`
+**Files added:** `docker-compose.override.yml` (gates the core `cloudflared` service behind a `cloudflare-tunnel` profile, so it's skipped by default — Compose auto-loads this filename, no `-f` flags needed)
+**File trimmed:** `.env.example` — dropped the Instance AI / sandbox / SearXNG / Daytona variable block (all dead weight with the compose files gone); `CLOUDFLARE_TUNNEL_TOKEN` annotated as opt-in via the new profile
+**What:** Core stack only — `n8n`, `n8n-webhook`, `n8n-worker`, `n8n-worker-runner`, `n8n-autoscaler`, `postgres`, `redis`, `redis-monitor`, `n8n-backup`. No Sysbox dependency (Docker Desktop on macOS can't provide it anyway), no public tunnel, no AI search backend.
+**Why:** Built for a work MacBook running Docker Desktop — no need for Instance AI or its dependency chain there, and Sysbox isn't available in a Docker-Desktop VM regardless. Started from `homelab-main` at commit `77b5bff` and subtracted, rather than building up from scratch, so the core n8n/queue/worker/db setup stays byte-identical to the production branch.
+**Revisit if:** Instance AI or the sandbox becomes wanted on this machine too — re-add the removed compose files and `.env.example` block from `homelab-main`, they weren't rewritten, just deleted here.
+
 ## Review process for future upstream releases
 
 1. `git fetch upstream`

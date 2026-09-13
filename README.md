@@ -2,6 +2,8 @@
 >
 > For the exhaustive, dated log of individual decisions and failures encountered getting this running, see [`FORK_CHANGES.md`](./FORK_CHANGES.md) — this section is the summary.
 >
+> **You're on `worklaptop-minimal`, not `homelab-main`.** This branch is a pared-down copy for local dev on a work laptop / Docker Desktop — core n8n + queue + worker + autoscaler + Postgres only. Instance AI, the self-hosted sandbox, SearXNG, and the Daytona provider are removed entirely (their compose files are gone, not just disabled); Cloudflare Tunnel stays defined but is off by default via a `docker-compose.override.yml` profile gate — see [`FORK_CHANGES.md` #7](./FORK_CHANGES.md#7-worklaptop-minimal-branch-pared-down-for-local-dev) for the full list of what was cut and why. `docker compose up -d` (no extra `-f` flags — `docker-compose.override.yml` auto-loads) gets you the minimal stack.
+>
 > ## Fork history
 >
 > **Initial deployment.** Reviewed the upstream setup script, compose files, and Postgres init script directly before running anything — no supply-chain issues found, but surfaced two things worth knowing: `N8N_RUNNERS_INSECURE_MODE` / `N8N_RUNNERS_ALLOW_PROTOTYPE_MUTATION` ship `true` by default, and the autoscaler mounts `/var/run/docker.sock` raw. Both flags were turned off; the socket mount was left as-is (VM106 isn't internet-facing, and the autoscaler is a trusted component by design).

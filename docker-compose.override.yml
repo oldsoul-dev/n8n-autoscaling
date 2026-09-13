@@ -1,0 +1,12 @@
+# Local dev override for a work laptop / Docker Desktop.
+# No Instance AI, no self-hosted sandbox, no SearXNG, no public Cloudflare
+# Tunnel - those files were removed on this branch (worklaptop-minimal),
+# see README.md and FORK_CHANGES.md #7 for what each one did.
+#
+# cloudflared stays defined in the core docker-compose.yml (kept in parity
+# with the homelab-main branch) but is gated behind a profile here so it's
+# skipped by default - nothing depends on it, so this is a pure opt-out,
+# not a functional change to the base file.
+services:
+  cloudflared:
+    profiles: ["cloudflare-tunnel"]
