@@ -1,0 +1,97 @@
+{
+  "name": "Demo: Puppeteer + Playwright + Ajv",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "1a2b3c4d-0001-4000-8000-000000000001",
+      "name": "When clicking \u2018Execute workflow\u2019",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const puppeteer = require('puppeteer-core');\n\nconst browser = await puppeteer.launch({\n  executablePath: process.env.PUPPETEER_EXECUTABLE_PATH,\n  headless: true,\n  args: ['--no-sandbox'],\n});\n\nconst page = await browser.newPage();\nawait page.goto('https://example.com', { waitUntil: 'networkidle2' });\n\nconst title = await page.title();\nconst screenshot = await page.screenshot({ encoding: 'base64' });\n\nawait browser.close();\n\nreturn {\n  json: { title, url: 'https://example.com' },\n  binary: {\n    data: {\n      data: screenshot,\n      mimeType: 'image/png',\n      fileName: 'screenshot.png',\n    },\n  },\n};\n"
+      },
+      "id": "1a2b3c4d-0002-4000-8000-000000000002",
+      "name": "Puppeteer: Screenshot & Title",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        40,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const { chromium } = require('playwright-core');\n\nconst browser = await chromium.launch({\n  executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH,\n  headless: true,\n});\n\nconst page = await browser.newPage();\nawait page.goto('https://example.com');\nconst heading = await page.textContent('h1');\nawait browser.close();\n\n// Carry the puppeteer step's json/binary forward, add this step's result\nreturn {\n  json: { ...$input.item.json, heading },\n  binary: $input.item.binary,\n};\n"
+      },
+      "id": "1a2b3c4d-0003-4000-8000-000000000003",
+      "name": "Playwright: Get Heading",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        280,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const Ajv = require('ajv');\nconst addFormats = require('ajv-formats');\n\nconst ajv = new Ajv();\naddFormats(ajv);\n\nconst schema = {\n  type: 'object',\n  properties: {\n    title: { type: 'string' },\n    heading: { type: 'string' },\n    url: { type: 'string', format: 'uri' },\n  },\n  required: ['title', 'heading', 'url'],\n};\n\nconst validate = ajv.compile(schema);\nconst data = $input.item.json;\n\nif (!validate(data)) {\n  throw new Error(`Schema check failed: ${JSON.stringify(validate.errors)}`);\n}\n\nreturn {\n  json: { ...data, schemaValid: true },\n  binary: $input.item.binary,\n};\n"
+      },
+      "id": "1a2b3c4d-0004-4000-8000-000000000004",
+      "name": "Ajv: Validate Result Shape",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        0
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking \u2018Execute workflow\u2019": {
+      "main": [
+        [
+          {
+            "node": "Puppeteer: Screenshot & Title",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Puppeteer: Screenshot & Title": {
+      "main": [
+        [
+          {
+            "node": "Playwright: Get Heading",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Playwright: Get Heading": {
+      "main": [
+        [
+          {
+            "node": "Ajv: Validate Result Shape",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "meta": {
+    "instanceId": "demo-puppeteer-playwright-ajv"
+  }
+}
