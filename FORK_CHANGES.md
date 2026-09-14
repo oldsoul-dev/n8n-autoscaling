@@ -63,6 +63,14 @@ This is a maintained fork of [conor-is-my-name/n8n-autoscaling](https://github.c
 **Why:** `192.168.2.210` doesn't exist as a local address anywhere but VM106 — `docker compose up -d` fails outright elsewhere with `bind: can't assign requested address`. Removed for this branch; `homelab-main` keeps it, since VM106 genuinely needs that LAN-reachable bind.
 **Found by:** first real `docker compose up -d` run on an actual work MacBook (this branch's intended target) — the failure mode this branch exists to avoid.
 
+### 9. `.env.example`'s `COMPOSE_FILE` silently disabled the cloudflared profile gate
+**File:** `.env.example`
+**What:** `COMPOSE_FILE=docker-compose.yml` (inherited from `homelab-main`, where the wizard keeps this list in sync with every optional override it manages). Compose treats a set `COMPOSE_FILE` as the *complete* file list — it stops auto-discovering `docker-compose.override.yml` entirely once this variable exists. So on this branch, `cloudflared`'s profile gate (added in #7) never applied: the override file just wasn't part of the build.
+**Fix:** `COMPOSE_FILE=docker-compose.yml:docker-compose.override.yml` — explicit, so the override loads every time.
+**Why this branch hit it and `homelab-main` doesn't:** `homelab-main`'s wizard-managed `COMPOSE_FILE` already lists every file it needs (including `docker-compose.override.yml` when present, per `n8n-setup.sh`'s `compose_file_list()`). This branch inherited a stale `.env.example` snapshot from before the override file existed, and nothing regenerates it automatically since the wizard itself was never meant to run here.
+**Found by:** `cloudflared` crash-looping on a real `docker compose up -d` — no Cloudflare token set (correctly, this branch doesn't need one), so the container kept restarting instead of being skipped.
+**Revisit if:** another override file gets added to this branch later — it needs adding to this same `COMPOSE_FILE` line, or it'll have the identical silent-skip problem.
+
 ## Review process for future upstream releases
 
 1. `git fetch upstream`
