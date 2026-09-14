@@ -22,7 +22,7 @@ x-n8n: &service-n8n
     context: .
     dockerfile: Dockerfile
     args:
-      N8N_VERSION: ${N8N_VERSION:-2.36.8}
+      N8N_VERSION: ${N8N_VERSION:-2.38.7}
   user: root:root
   restart: unless-stopped
   logging: *default-logging
@@ -86,7 +86,7 @@ x-task-runner: &service-task-runner
     context: .
     dockerfile: Dockerfile.runner
     args:
-      N8N_VERSION: ${N8N_VERSION:-2.36.8}
+      N8N_VERSION: ${N8N_VERSION:-2.38.7}
   restart: unless-stopped
   logging: *default-logging
   networks:

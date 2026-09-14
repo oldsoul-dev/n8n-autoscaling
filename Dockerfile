@@ -1,7 +1,7 @@
 # Multi-stage build to add tools to n8n image
 # This works around apk being stripped from the official image
 
-ARG N8N_VERSION=2.36.8
+ARG N8N_VERSION=2.38.7
 
 # Stage 1: Build dependencies in Alpine
 FROM alpine:3.23 AS builder
