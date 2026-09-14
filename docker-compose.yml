@@ -164,7 +164,6 @@ services:
     <<: *service-n8n
     ports:
       - "127.0.0.1:5678:5678"
-      - "192.168.2.210:5678:5678"
     volumes:
       - n8n_main:/n8n
     depends_on:

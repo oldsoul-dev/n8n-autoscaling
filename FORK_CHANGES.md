@@ -57,6 +57,12 @@ This is a maintained fork of [conor-is-my-name/n8n-autoscaling](https://github.c
 **Why:** Built for a work MacBook running Docker Desktop — no need for Instance AI or its dependency chain there, and Sysbox isn't available in a Docker-Desktop VM regardless. Started from `homelab-main` at commit `77b5bff` and subtracted, rather than building up from scratch, so the core n8n/queue/worker/db setup stays byte-identical to the production branch.
 **Revisit if:** Instance AI or the sandbox becomes wanted on this machine too — re-add the removed compose files and `.env.example` block from `homelab-main`, they weren't rewritten, just deleted here.
 
+### 8. Removed VM106's hardcoded LAN IP from the core n8n port bind
+**File:** `docker-compose.yml`
+**What:** The `n8n` service published two ports — `127.0.0.1:5678:5678` and `192.168.2.210:5678:5678` (VM106's own LAN address, added when n8n was exposed to the LAN there). The second line was missed when this branch was first cut from `homelab-main`, since it lives in the shared core file, not one of the files removed in #7.
+**Why:** `192.168.2.210` doesn't exist as a local address anywhere but VM106 — `docker compose up -d` fails outright elsewhere with `bind: can't assign requested address`. Removed for this branch; `homelab-main` keeps it, since VM106 genuinely needs that LAN-reachable bind.
+**Found by:** first real `docker compose up -d` run on an actual work MacBook (this branch's intended target) — the failure mode this branch exists to avoid.
+
 ## Review process for future upstream releases
 
 1. `git fetch upstream`
