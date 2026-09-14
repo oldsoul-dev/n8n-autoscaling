@@ -48,6 +48,13 @@ This is a maintained fork of [conor-is-my-name/n8n-autoscaling](https://github.c
 **Why:** An unauthenticated SearXNG instance has no reason to be reachable from the public internet; away-from-home access is intended to go through Tailscale instead (not yet configured as of this writing).
 **Revisit if:** away-from-home search access is needed before Tailscale is set up on this VM.
 
+### 7. Known issue, not fixed here: stale `N8N_VERSION` fallback defaults
+**Status:** Documented only — deliberately **not** patched on this branch, since VM106's actual builds always pass the real value from `.env` and never hit it.
+**Files:** `Dockerfile` (`ARG N8N_VERSION=2.36.8`), `Dockerfile.runner` (same), `docker-compose.yml` (two `build.args` fallbacks, same default)
+**The issue:** all four fallback defaults still say `2.36.8`, but `Dockerfile.runner` hardcodes `corepack prepare pnpm@11.22.0` — correct for the *actual* pinned version (`2.38.7`; confirmed `n8nio/runners:2.38.7` links `pnpm@11.22.0`), but wrong for the stale `2.36.8` default (confirmed `n8nio/runners:2.36.8` links `pnpm@10.32.1`). Any build that falls through to the default instead of reading `.env` hits `ERR_PNPM_UNEXPECTED_STORE`.
+**When this actually bites:** anything that builds these Dockerfiles standalone without passing `--build-arg N8N_VERSION=...` — e.g. Docker Build Cloud's auto-build-every-Dockerfile-it-finds feature (hit this exact error on the `worklaptop-minimal` branch, which is why that branch has the defaults bumped to `2.38.7` — see that branch's FORK_CHANGES.md #8). `docker compose build`/`up -d` here on VM106 is unaffected — `.env` always supplies `N8N_VERSION` and overrides the fallback.
+**Revisit if:** a standalone/CI build of either Dockerfile starts failing with `ERR_PNPM_UNEXPECTED_STORE` on this branch too, or the next `N8N_VERSION` bump changes the runner's linked pnpm version again (re-check with the command already documented above, in divergence #2's neighbor comment in `Dockerfile.runner`).
+
 ## Review process for future upstream releases
 
 1. `git fetch upstream`
