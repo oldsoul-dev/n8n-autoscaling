@@ -27,3 +27,34 @@ plugins:
     active: true
   searxng_bm25_reranker.SXNGPlugin:
     active: true
+
+# Custom engines (source: searxng-engines/, baked into the image by
+# Dockerfile.searxng). api_key values below are placeholder tokens, not real
+# secrets - substituted at container start from GITEA_API_KEY/SHLINK_API_KEY
+# env vars by searxng-entrypoint-wrapper.sh. See FORK_CHANGES.md for why.
+engines:
+  - name: gitea (private)
+    engine: gitea_private
+    base_url: http://192.168.1.134:3000
+    api_key: "__GITEA_API_KEY__"
+    shortcut: gitp
+    # SearXNG rejects plain http:// per engine by default (enable_http:
+    # False) - raises InvalidSchema rather than silently going cleartext.
+    # Both custom engines here point at LAN-internal http backends, so both
+    # opt in explicitly.
+    enable_http: true
+    # inactive (not disabled - "disabled" is only a default UI toggle and
+    # does not skip loading; "inactive" is what actually skips load_engine(),
+    # and therefore setup()) until GITEA_API_KEY is set in .env. This
+    # engine's setup() hard-fails on an empty key, which would otherwise
+    # crash the whole instance at startup. Remove this line once the token
+    # is added (or set it to false).
+    inactive: true
+
+  - name: shlink
+    engine: shlink
+    base_url: http://192.168.1.6:8207
+    api_key: "__SHLINK_API_KEY__"
+    shortcut: go
+    enable_http: true
+    disabled: false

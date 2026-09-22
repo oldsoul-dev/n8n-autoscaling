@@ -1,4 +1,4 @@
-ARG SEARXNG_VERSION=2026.8.28-a30b2d474
+ARG SEARXNG_VERSION=2026.9.12-d4f00d15d
 FROM ghcr.io/searxng/searxng:${SEARXNG_VERSION}
 
 # Layer in the BM25 reranker plugin (post_search reranking, title-weighted).
@@ -9,3 +9,19 @@ FROM ghcr.io/searxng/searxng:${SEARXNG_VERSION}
 RUN /usr/local/searxng/.venv/bin/python -m ensurepip --upgrade \
  && /usr/local/searxng/.venv/bin/python -m pip install --no-cache-dir searxng-bm25-reranker \
  && /usr/local/searxng/.venv/bin/python -m pip uninstall -y pip setuptools wheel
+
+# Custom engines: private Gitea repo search (adds token auth the stock
+# built-in gitea engine doesn't send) and Shlink short-link search. See
+# FORK_CHANGES.md for why these exist and how their API keys reach the
+# container without landing in git.
+COPY searxng-engines/gitea_private.py /usr/local/searxng/searx/engines/gitea_private.py
+COPY searxng-engines/shlink.py /usr/local/searxng/searx/engines/shlink.py
+
+# The tracked searxng-settings.yml is a template (placeholder tokens, no real
+# secrets) mounted at .template by docker-compose.ai-sandbox.yml. This wrapper
+# substitutes the real values from env vars at container start, writes the
+# result to the path SearXNG actually reads, then hands off to the stock
+# entrypoint unchanged.
+COPY searxng-entrypoint-wrapper.sh /usr/local/searxng/entrypoint-wrapper.sh
+RUN chmod +x /usr/local/searxng/entrypoint-wrapper.sh
+ENTRYPOINT ["/usr/local/searxng/entrypoint-wrapper.sh"]

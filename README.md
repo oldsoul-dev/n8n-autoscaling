@@ -756,6 +756,8 @@ https://webhook.yourdomain.com/webhook/your-webhook-id
 ├── docker-compose.ai-sandbox.privileged.yml  # Local/test isolation fallback
 ├── docker-compose.podman.yml       # Podman rootless override (SELinux/UID flags)
 ├── searxng-settings.yml            # SearXNG config: JSON responses for Instance AI, privacy hardening, BM25/tracker-url plugins (fork addition, see FORK_CHANGES.md)
+├── searxng-engines/                # Custom SearXNG engines: private Gitea repo search, Shlink go-links (fork addition, see FORK_CHANGES.md #8)
+├── searxng-entrypoint-wrapper.sh   # Renders searxng-settings.yml's API key placeholders from env vars at container start (fork addition, see FORK_CHANGES.md #8)
 ├── Dockerfile                      # Main n8n image (based on n8nio/n8n)
 ├── Dockerfile.runner               # Task runner image (based on n8nio/runners)
 ├── n8n-task-runners.json           # Task runner launcher config
