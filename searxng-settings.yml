@@ -43,13 +43,7 @@ engines:
     # Both custom engines here point at LAN-internal http backends, so both
     # opt in explicitly.
     enable_http: true
-    # inactive (not disabled - "disabled" is only a default UI toggle and
-    # does not skip loading; "inactive" is what actually skips load_engine(),
-    # and therefore setup()) until GITEA_API_KEY is set in .env. This
-    # engine's setup() hard-fails on an empty key, which would otherwise
-    # crash the whole instance at startup. Remove this line once the token
-    # is added (or set it to false).
-    inactive: true
+    # Activated 2026-09-22 - GITEA_API_KEY is set in .env now.
 
   - name: shlink
     engine: shlink
